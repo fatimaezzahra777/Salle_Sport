@@ -1,70 +1,42 @@
-# Salle_Sport
-# Plateforme de Gestion d’une Salle de Sport
- Description du projet
+# Salle_Sport# Plateforme de Gestion d’une Salle de Sport
 
-Cette plateforme permet de gérer les cours, les équipements, ainsi que d'afficher un tableau de bord récapitulatif pour une salle de sport. Elle facilite le suivi, la gestion et l’organisation des activités.
+## Description du projet
+Cette plateforme web permet la gestion complète des cours et des équipements d’une salle de sport.  
+Elle offre également un tableau de bord dynamique permettant d’obtenir une vue d’ensemble sur l’activité.
 
- Objectifs
+L’objectif principal est de **faciliter la gestion quotidienne**, d’optimiser l’organisation et de centraliser toutes les informations essentielles.
 
-Centraliser les informations liées aux cours et équipements.
+## Objectifs
+- Centraliser les données liées aux **cours** et **équipements**.  
+- Simplifier la **planification**, le suivi et la mise à jour.  
+- Fournir une **vue d’ensemble claire** grâce à un tableau de bord intelligent.  
+- Améliorer la gestion interne de la salle de sport.
 
-Faciliter la planification et le suivi quotidien.
+## Fonctionnalités principales
 
-Offrir une vue d’ensemble claire grâce au tableau de bord.
+### 1. Gestion des cours
+- Ajouter, modifier et supprimer un cours.  
+- Définir :  
+  - la catégorie  
+  - la date  
+  - l’heure  
+  - la durée  
+  - la capacité maximale  
+- Associer des équipements nécessaires au cours.
 
- Fonctionnalités principales
- Gestion des cours
+### 2. Gestion des équipements
+- Ajouter un équipement.  
+- Modifier ou supprimer un équipement.  
+- Suivre l’état (ex : bon, usé, en maintenance).  
+- Vérifier la disponibilité.
 
-Ajouter, modifier et supprimer un cours.
+### 3. Tableau de bord
+- Affichage du **nombre total de cours**.  
+- Affichage du **nombre total d’équipements**.  
+- Visualisation des statistiques via des **graphiques**.  
+- Données mises à jour en temps réel.
 
-Choisir la catégorie, la date, l’heure, la durée et la capacité.
+## Modélisation (ERD)
+Le schéma ERD illustre la relation :
 
-Associer des équipements si nécessaires.
-
- Gestion des équipements
-
-Ajouter un équipement.
-
-Modifier/supprimer un équipement.
-
-Indiquer l’état et la disponibilité.
-
- Tableau de bord
-
-Nombre total de cours.
-
-Nombre total d’équipements.
-
-Statistiques visuelles (graphiques).
-
- Modélisation (ERD)
-
-Un diagramme ERD illustre la relation :
-
-Cours ⟷ Équipements via une table associative (cours_equipement).
-
-La table associative contient uniquement :
-
-cours_id
-
-equipement_id
-
-(Diagramme fourni séparément ou généré dans le projet.)
-
- Technologies utilisées
-
-Frontend : HTML, CSS (TailwindCSS), JavaScript
-
-Backend : PHP
-
-Base de données : MySQL
-
- Démonstration du fonctionnement
-
-L’utilisateur accède à l’interface.
-
-Il peut consulter la liste des cours et équipements.
-
-Il peut ajouter/modifier des données via des formulaires simples.
-
-Le tableau de bord se met à jour automatiquement.
+ent.
