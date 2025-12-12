@@ -1,12 +1,248 @@
 <?php
+session_start();
+require_once __DIR__ . "/connexion.php";
 
-require __DIR__ . "/conexion.php";
+
+if(isset($_POST['login'])){
+    $username = $_POST['username'];
+    $password = $_POST['password'];
+
+    $stmt = $conn->prepare("SELECT * FROM personne WHERE username=? LIMIT 1");
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if($result && $result->num_rows === 1){
+        $user = $result->fetch_assoc();
+        if(password_verify($password, $user['password'])){
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['username'] = $user['username'];
+            header("Location: ".$_SERVER['PHP_SELF']);
+            exit;
+        } else {
+            $error = "Mot de passe incorrect";
+        }
+    } else {
+        $error = "Utilisateur non trouvé";
+    }
+}
+
+if(isset($_GET['logout'])){
+    session_unset();
+    session_destroy();
+    header("Location: ".$_SERVER['PHP_SELF']);
+    exit;
+}
+
+if (isset($_POST['signup'])) {
+
+    $username = trim($_POST['new_username']);
+    $password = $_POST['new_password'];
+    $confirm  = $_POST['confirm_password'];
+
+    // Vérifications
+    if ($password !== $confirm) {
+        $error = "Les mots de passe ne correspondent pas";
+    } else {
+
+        // Vérifier si l'utilisateur existe déjà
+        $check = $conn->prepare("SELECT id FROM personne WHERE username = ?");
+        $check->bind_param("s", $username);
+        $check->execute();
+        $check->store_result();
+
+        if ($check->num_rows > 0) {
+            $error = "Nom d'utilisateur déjà utilisé";
+        } else {
+            // Hash du mot de passe
+            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+
+            // Insertion
+            $stmt = $conn->prepare("INSERT INTO personne (username, password) VALUES (?, ?)");
+            $stmt->bind_param("ss", $username, $hashedPassword);
+
+            if ($stmt->execute()) {
+                $success = "Compte créé avec succès. Vous pouvez vous connecter.";
+            } else {
+                $error = "Erreur lors de la création du compte";
+            }
+        }
+    }
+}
+
+
+if(!isset($_SESSION['user_id'])) {
+?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - Salle de sport</title>
+    <style>
+    body{
+        margin:0;
+        min-height:100vh;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        background:linear-gradient(135deg,#0ea5a4,#7c3aed);
+        font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .auth-container{
+        width:100%;
+        max-width:420px;
+        background:#fff;
+        border-radius:12px;
+        padding:30px;
+        box-shadow:0 20px 40px rgba(0,0,0,.15);
+    }
+
+    .auth-container h2{
+        text-align:center;
+        margin-bottom:15px;
+        color:#111827;
+    }
+
+    .auth-container hr{
+        margin:25px 0;
+        border:none;
+        border-top:1px solid #e5e7eb;
+    }
+
+    .field{
+        display:flex;
+        flex-direction:column;
+        margin-bottom:15px;
+    }
+
+    .field label{
+        font-size:14px;
+        margin-bottom:5px;
+        color:#374151;
+    }
+
+    .field input{
+        padding:10px 12px;
+        border-radius:8px;
+        border:1px solid #d1d5db;
+        font-size:14px;
+        outline:none;
+    }
+
+    .field input:focus{
+        border-color:#0ea5a4;
+        box-shadow:0 0 0 2px rgba(14,165,164,.2);
+    }
+
+    .btn-auth{
+        width:100%;
+        padding:12px;
+        border:none;
+        border-radius:8px;
+        background:#111827;
+        color:#fff;
+        font-size:15px;
+        cursor:pointer;
+        transition:.2s;
+    }
+
+    .btn-auth:hover{
+        background:#0ea5a4;
+    }
+
+    .message-error{
+        background:#fee2e2;
+        color:#991b1b;
+        padding:10px;
+        border-radius:8px;
+        font-size:14px;
+        margin-bottom:15px;
+        text-align:center;
+    }
+
+    .message-success{
+        background:#dcfce7;
+        color:#166534;
+        padding:10px;
+        border-radius:8px;
+        font-size:14px;
+        margin-bottom:15px;
+        text-align:center;
+    }
+</style>
+
+</head>
+<body>
+
+<div class="auth-container">
+
+    <?php if(isset($error)): ?>
+        <div class="message-error"><?= $error ?></div>
+    <?php endif; ?>
+
+    <?php if(isset($success)): ?>
+        <div class="message-success"><?= $success ?></div>
+    <?php endif; ?>
+
+    <h2>Créer un compte</h2>
+
+    <form method="POST">
+        <div class="field">
+            <label>Nom d'utilisateur</label>
+            <input type="text" name="new_username" required>
+        </div>
+
+        <div class="field">
+            <label>Mot de passe</label>
+            <input type="password" name="new_password" required>
+        </div>
+
+        <div class="field">
+            <label>Confirmer le mot de passe</label>
+            <input type="password" name="confirm_password" required>
+        </div>
+
+        <button type="submit" name="signup" class="btn-auth">
+            S'inscrire
+        </button>
+    </form>
+
+    <hr>
+
+    <h2>Connexion</h2>
+
+    <form method="POST">
+        <div class="field">
+            <label>Nom d'utilisateur</label>
+            <input type="text" name="username" required>
+        </div>
+
+        <div class="field">
+            <label>Mot de passe</label>
+            <input type="password" name="password" required>
+        </div>
+
+        <button type="submit" name="login" class="btn-auth">
+            Se connecter
+        </button>
+    </form>
+
+</div>
+
+</body>
+
+</html>
+<?php
+exit;
+}
 
 
 $totalCours = $conn->query("SELECT COUNT(*) AS total FROM cours")->fetch_assoc()['total'];
 $totalEquip = $conn->query("SELECT COUNT(*) AS total FROM `Équipement`")->fetch_assoc()['total'];
 
 $editCours = null; 
+$editEquipement = null;
 
 if($_SERVER['REQUEST_METHOD']=='POST'){
 
@@ -19,44 +255,48 @@ if($_SERVER['REQUEST_METHOD']=='POST'){
         $duree = $_POST['duree'];
         $nombre_m = $_POST['nombre_m'];
 
-        $sql = "INSERT INTO cours (nom, `categorie`, date_c, heur, duree, nombre_m)
+        $sql = "INSERT INTO cours (nom, categorie, date_c, heur, duree, nombre_m)
                 VALUES ('$nom', '$categorie', '$date_c', '$heur', '$duree', '$nombre_m')";
 
 
-        if ($conn->query($sql) === TRUE) {
-            header("Location: ".$_SERVER['PHP_SELF']); 
-            exit;
-        } else {
-            echo "Erreur : " . $conn->error;
-        }
+        $conn->query($sql);
+        header("Location: ".$_SERVER['PHP_SELF']);
+        exit;
     }
 
-    if (isset($_POST["form"]) && $_POST["form"] === "editCours") {
+    //modifier un cours
+    if (isset($_POST["form"]) && $_POST["form"] === "updateCours") {
+        $id = intval($_POST["id_c"]);
+        $nom = $_POST["nom"];
+        $categorie = $_POST["categorie"];
+        $date_c = $_POST["date_c"];
+        $heur = $_POST["heur"];
+        $duree = $_POST["duree"];
+        $nombre_m = $_POST["nombre_m"];
 
+        $sql = "UPDATE cours SET 
+                nom='$nom',
+                categorie='$categorie',
+                date_c='$date_c',
+                heur='$heur',
+                duree='$duree',
+                nombre_m='$nombre_m'
+                WHERE id_c = $id";
+
+        $conn->query($sql);
+        header("Location: ".$_SERVER['PHP_SELF']);
+        exit;
+
+    }
+
+    /* Récupérer un cours pour édition */
+    if (isset($_POST["form"]) && $_POST["form"] === "editCours") {
         $id = intval($_POST["edit_id"]);
-        $sql = "SELECT * FROM cours WHERE id_c = $id";
-        $result = $conn->query($sql);
+        $result = $conn->query("SELECT * FROM cours WHERE id_c = $id");
 
         if ($result && $result->num_rows > 0) {
             $editCours = $result->fetch_assoc();
         }
-    }
-
-    if (isset($_POST["form"]) && $_POST["form"] === "updateCours") {
-
-        $id = intval($_POST["id_c"]);
-        $nom = $_POST['nom'];
-        $categorie = $_POST['categorie'];
-        $date_c = $_POST['date_c'];
-        $heur = $_POST['heur'];
-        $duree = $_POST['duree'];
-        $nombre_m = $_POST['nombre_m'];
-
-        $sql = "UPDATE cours 
-                SET nom='$nom', categorie='$categorie', date_c='$date_c',
-                    heur='$heur', duree='$duree', nombre_m='$nombre_m'
-                WHERE id_c = $id";
-        $conn->query($sql);
     }
 
 
@@ -92,6 +332,31 @@ if($_SERVER['REQUEST_METHOD']=='POST'){
         }
     }
 
+    //modifier un equipement
+    if (isset($_POST["form"]) && $_POST["form"] === "editEquipement") {
+        $id = intval($_POST["edit_id"]);
+        $result = $conn->query("SELECT * FROM Équipement WHERE id_é = $id");
+
+        if ($result && $result->num_rows > 0) {
+            $editEquipement = $result->fetch_assoc();
+        }
+    }
+
+    if (isset($_POST["form"]) && $_POST["form"] === "updateEquipement") {
+        $id = intval($_POST["id_é"]);
+        $nom = $_POST['nom'];
+        $type = $_POST['type'];
+        $quantite_d = $_POST['quantite_d'];
+        $etat = $_POST['etat'];
+
+        $sql = "UPDATE Équipement
+                SET nom='$nom', type='$type', quantite_d='$quantite_d', etat='$etat'
+                WHERE id_é = $id";
+        $conn->query($sql);
+        header("Location: ".$_SERVER['PHP_SELF']);
+        exit;
+    }
+
     //supprimer un equipement
     if (isset($_POST["form"]) && $_POST["form"] == "deletEquip") {
     $id_é = $_POST["delete_id"];
@@ -105,185 +370,107 @@ if($_SERVER['REQUEST_METHOD']=='POST'){
         echo "Erreur: " . $conn->error;
     }
 }
-}
+} 
     
 ?>
 
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8" />
-    <title>Gestion Salle de Sport - Dashboard</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Dashboard - Salle de sport</title>
+  <style>
+    /* Simple, modern CSS template - replace variables as needed */
+    :root{
+      --bg:#f6f7fb;
+      --card:#ffffff;
+      --muted:#6b7280;
+      --accent:#0f172a;
+      --accent-2:#0ea5a4;
+      --radius:12px;
+      --shadow: 0 6px 18px rgba(12, 12, 12, 0.08);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    body{margin:0;background:var(--bg);color:var(--accent);}
+    .container{max-width:1100px;margin:28px auto;padding:18px;}
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+    .brand{display:flex;gap:12px;align-items:center}
+    .logo{width:46px;height:46px;border-radius:10px;background:linear-gradient(135deg,var(--accent-2),#7c3aed);display:flex;align-items:center;justify-content:center;color:white;font-weight:700}
+    h1{font-size:20px;margin:0}
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:18px}
+    .card{background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+    .card h3{margin:0 0 8px 0;font-size:14px;color:var(--muted)}
+    .big-num{font-size:28px;font-weight:700}
 
-    <!-- Bootstrap CSS -->
-    <link
-            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-            rel="stylesheet"
-    />
+    /* lists and tables */
+    .table{width:100%;border-collapse:collapse}
+    .table th, .table td{padding:10px;border-bottom:1px solid #eef2f6;text-align:left}
+    .controls{display:flex;gap:8px;flex-wrap:wrap}
+    .btn{display:inline-block;padding:8px 12px;border-radius:8px;background:#111827;color:#fff;text-decoration:none;font-size:13px}
+    .btn.secondary{background:#e5e7eb;color:#111827}
 
-    <!-- Icons (Bootstrap Icons) -->
-    <link
-            rel="stylesheet"
-            href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
-    />
+    /* Responsive */
+    @media (max-width:900px){
+      .grid{grid-template-columns:repeat(1,1fr)}
+    }
 
-    <!-- Chart.js pour les graphiques -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    /* Forms */
+    form .row{display:flex;gap:8px;margin-bottom:8px}
+    .field{flex:1;display:flex;flex-direction:column}
+    .field label{font-size:13px;color:var(--muted);margin-bottom:6px}
+    .field input,.field select,.field textarea{padding:8px;border:1px solid #e6eef6;border-radius:8px}
 
-    <style>
-        body {
-            background-color: #f5f6fa;
-        }
-        .navbar-brand {
-            font-weight: 700;
-            letter-spacing: 0.5px;
-        }
-        .nav-link {
-            cursor: pointer;
-        }
-        .section {
-            display: none;
-            padding-top: 2rem;
-        }
-        .section.active {
-            display: block;
-        }
-        .card-kpi {
-            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-        }
-        .table-actions i {
-            cursor: pointer;
-            margin-right: 8px;
-        }
-        footer {
-            margin-top: 3rem;
-            padding: 1.5rem 0;
-            text-align: center;
-            font-size: 0.9rem;
-            color: #888;
-        }
-    </style>
+    footer{margin-top:20px;text-align:center;color:var(--muted);font-size:13px}
+  </style>
 </head>
 <body>
-<!-- Navbar -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="#">Salle de Sport</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-
-        <div class="collapse navbar-collapse" id="mainNavbar">
-            <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-                <li class="nav-item"><span class="nav-link active" data-section="dashboard">Dashboard</span></li>
-                <li class="nav-item"><span class="nav-link" data-section="cours">Cours</span></li>
-                <li class="nav-item"><span class="nav-link" data-section="equipements">Équipements</span></li>
-                <li class="nav-item"><span class="nav-link" data-section="associations">Associations</span></li>
-                <li class="nav-item"><span class="nav-link" data-section="auth">Auth</span></li>
-            </ul>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="logo">SS</div>
+        <div>
+          <h1>Plateforme - Salle de sport</h1>
+          <div style="color:var(--muted);font-size:13px">Dashboard de gestion des cours & équipements</div>
         </div>
+      </div>
+      <div class="controls">
+        <a class="btn" href="?logout=1">Se déconnecter</a>
+        <a class="btn secondary" href="#forms">Ajouter</a>
+      </div>
+    </header>
+
+    <!-- Dashboard cards -->
+    <div class="grid">
+      <div class="card">
+        <h3>Total de cours</h3>
+        <div class="big-num" id="total-cours"><?= $totalCours ?></div>
+      </div>
+      <div class="card">
+        <h3>Total d'équipements</h3>
+        <div class="big-num" id="total-equipements"><?= $totalEquip ?></div>
+      </div>
     </div>
-</nav>
 
-<main class="container my-4">
-    <section id="dashboard" class="section active">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2>Dashboard</h2>
-            <span class="badge text-bg-secondary">Vue globale</span>
-        </div>
+    <!-- Charts -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">
+      <div class="card">
+        <canvas id="chartCours" width="300" height="300"></canvas>
+      </div>
+      <div class="card">
 
-        <div class="row g-3 mb-4">
-            <div class="col-md-3">
-                <div class="card card-kpi">
-                    <div class="card-body">
-                        <h6 class="card-title text-muted">Nombre total de cours</h6>
-                        <h3><?= $totalCours ?></h3>
-                    </div>
-                </div>
-            </div>
+        <canvas id="chartEquip" width="300" height="300"></canvas>
+      </div>
+    </div>
 
-            <div class="col-md-3">
-                <div class="card card-kpi">
-                    <div class="card-body">
-                        <h6 class="card-title text-muted">Nombre total d'équipements</h6>
-                        <h3><?= $totalEquip ?></h3>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-
-        <div class="row g-4">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        Répartition des cours par catégorie
-                    </div>
-                    <div class="card-body">
-                        <canvas id="chartCoursCategories"></canvas>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        Répartition des équipements par type
-                    </div>
-                    <div class="card-body">
-                        <canvas></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- COURS -->
-    <section id="cours" class="section">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2>Gestion des cours</h2>
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCours" onclick="openAddCours()">
-                <i class="bi bi-plus-lg"></i> Ajouter un cours
-            </button>
-        </div>
-
-        <!-- Filtres simples (front uniquement) -->
-        <div class="row g-3 mb-3">
-            <div class="col-md-4">
-                <input
-                        type="text"
-                        class="form-control"
-                        id="filterCoursNom"
-                        placeholder="Filtrer par nom..."
-                        oninput="renderCoursTable()"
-                />
-            </div>
-            <div class="col-md-4">
-                <select class="form-select" id="filterCoursCategorie" onchange="renderCoursTable()">
-                    <option value="">Toutes les catégories</option>
-                    <option value="Yoga">Yoga</option>
-                    <option value="Musculation">Musculation</option>
-                    <option value="Cardio">Cardio</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="table-responsive">
-            <table class="table table-striped align-middle">
-                <thead>
-                <tr>
-                    <th>Nom</th>
-                    <th>Catégorie</th>
-                    <th>Date</th>
-                    <th>Heure</th>
-                    <th>Durée (min)</th>
-                    <th>Max participants</th>
-                    <th style="width: 120px;">Actions</th>
-                </tr>
-                </thead>
-               <tbody>
+    <!-- Tables: Courses -->
+    <div class="card" style="margin-bottom:12px">
+      <h3>Liste des cours</h3>
+      <table class="table" id="table-cours">
+        <thead>
+          <tr><th>Nom</th><th>Catégorie</th><th>Date</th><th>Heure</th><th>Durée (min)</th><th>Max</th><th>Actions</th></tr>
+        </thead>
+         <tbody>
                     <?php
                     $result = $conn->query("SELECT * FROM cours ORDER BY date_c ASC");
 
@@ -300,7 +487,7 @@ if($_SERVER['REQUEST_METHOD']=='POST'){
                                     <form method='POST' style='display:inline;' action=''>
                                             <input type='hidden' name='edit_id' value='{$row['id_c']}'>
                                             <input type='hidden' value='editCours' name='form' />
-                                            <a  data-bs-toggle='modal' data-bs-target='#modalCours' href='index.php?id={$row['id_c']}'>Modifier</a>
+                                            <button type='submit' class='btn btn-sm btn-primary'>Modifier</button>
                                         </form>
                                         <form method='POST' style='display:inline;' action=''>
                                             <input type='hidden' name='delete_id' value='{$row['id_c']}'>
@@ -313,108 +500,17 @@ if($_SERVER['REQUEST_METHOD']=='POST'){
                     }
                     ?>
                 </tbody>
-            </table>
-        </div>
-    </section>
-
-    <!-- MODAL COURS -->
-    <div class="modal fade" id="modalCours" tabindex="-1">
-        <div class="modal-dialog">
-            <form class="modal-content" id="formCours" method="Post" action="">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="modalCoursTitle">Ajouter un cours</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <input type="hidden" name="form" value="<?= $editCours ? 'updateCours' : 'cours' ?>">
-                    <input type="hidden" name="id_c" value="<?= $editCours['id_c'] ?? '' ?>">
-
-                    <div class="mb-3">
-                        <label class="form-label">Nom du cours *</label>
-                        <input type="text" id="coursNom" name="nom" class="form-control" value="<?= $editCours['nom'] ?? '' ?>" required />
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Catégorie *</label>
-                        <select id="coursCategorie" class="form-select" name="categorie" value="<?= $editCours['categorie'] ?? '' ?>"  required>
-                            <option value="">Choisir...</option>
-                            <option value="Yoga">Yoga</option>
-                            <option value="Musculation">Musculation</option>
-                            <option value="Cardio">Cardio</option>
-                        </select>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Date *</label>
-                        <input type="date" id="coursDate" class="form-control" name="date_c" value="<?= $editCours['date_c'] ?? '' ?>" required />
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Heure *</label>
-                        <input type="time" id="coursHeure" class="form-control" name="heur" value="<?= $editCours['heur'] ?? '' ?>" required />
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Durée (minutes) *</label>
-                        <input type="number" id="coursDuree" class="form-control" name="duree" value="<?= $editCours['duree'] ?? '' ?>" required />
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Nombre maximum de participants *</label>
-                        <input type="number" id="coursMaxParticipants" class="form-control" name="nombre_m" min="1" value="<?= $editCours['nombre_m'] ?? '' ?>" required />
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-primary" value="<?= $editCours ? "Modifier" : "Ajouter" ?>">Enregistrer</button>
-                </div>
-            </form>
-        </div>
+      </table>
     </div>
-    
 
-    <!-- EQUIPEMENTS -->
-    <section id="equipements" class="section">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2>Gestion des équipements</h2>
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalEquipement" onclick="openAddEquipement()">
-                <i class="bi bi-plus-lg"></i> Ajouter un équipement
-            </button>
-        </div>
-
-        <!-- Filtres -->
-        <div class="row g-3 mb-3">
-            <div class="col-md-4">
-                <input
-                        type="text"
-                        class="form-control"
-                        id="filterEquipNom"
-                        placeholder="Filtrer par nom..."
-                        oninput="renderEquipementsTable()"
-                />
-            </div>
-            <div class="col-md-4">
-                <select class="form-select" id="filterEquipType" onchange="renderEquipementsTable()">
-                    <option value="">Tous les types</option>
-                    <option value="Tapis de course">Tapis de course</option>
-                    <option value="Haltères">Haltères</option>
-                    <option value="Ballons">Ballons</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="table-responsive">
-            <table class="table table-striped align-middle">
-                <thead>
-                <tr>
-                    <th>Nom</th>
-                    <th>Type</th>
-                    <th>Quantité</th>
-                    <th>État</th>
-                    <th style="width: 120px;">Actions</th>
-                </tr>
-                </thead>
-                <tbody>
+    <!-- Tables: Equipements -->
+    <div class="card" style="margin-bottom:12px">
+      <h3>Liste des équipements</h3>
+      <table class="table" id="table-equipements">
+        <thead>
+          <tr><th>Nom</th><th>Type</th><th>Quantité</th><th>État</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
                     <?php
                     $result = $conn->query("SELECT * FROM Équipement");
 
@@ -426,15 +522,11 @@ if($_SERVER['REQUEST_METHOD']=='POST'){
                                     <td>{$row['quantite_d']}</td>
                                     <td>{$row['etat']}</td>
                                     <td class='actions'>
-                                        <button class='btn btn-sm btn-primary' data-bs-toggle='modal' data-bs-target='#modalEquipement' onclick=oppenEditEquipement(
-                                                    '{$row['id_é']}',
-                                                    '{$row['nom']}',
-                                                    '{$row['type']}',
-                                                    '{$row['quantite_d']}',
-                                                    '{$row['etat']}'                                       
-                        )>
-                                        Modifier
-                                        </button>
+                                        <form method='POST' style='display:inline;' action=''>
+                                            <input type='hidden' name='edit_id' value='{$row['id_é']}'>
+                                            <input type='hidden' value='editEquipement' name='form' />
+                                            <button type='submit' class='btn btn-sm btn-primary'>Modifier</button>
+                                        </form>
                                         <form method='POST' style='display:inline;'>
                                             <input type='hidden' name='delete_id' value='{$row['id_é']}'>
                                             <input type='hidden' name='form' value='deletEquip'>
@@ -446,200 +538,141 @@ if($_SERVER['REQUEST_METHOD']=='POST'){
                     }
                     ?>
                 </tbody>
-            </table>
-        </div>
-    </section>
-
-    <!-- MODAL EQUIPEMENT -->
-    <div class="modal fade" id="modalEquipement" tabindex="-1">
-        <div class="modal-dialog">
-            <form class="modal-content" id="formEquipement" method="Post" action="">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="modalEquipementTitle">Ajouter un équipement</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <input type="hidden" name="form" value="<?= $editEquipement ? 'updateEquipement' : 'Equipement' ?>"/>
-                    <input type="hidden" name="id_é" value="<?= $editEquipement['id_é'] ?? '' ?>">
-
-                    <div class="mb-3">
-                        <label class="form-label">Nom *</label>
-                        <input type="text" name="nom" id="equipementNom" class="form-control" value="<?= $editEquipement['nom'] ?? '' ?>" required />
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Type *</label>
-                        <select id="equipementType" name="type" class="form-select" value="<?= $editEquipement['type'] ?? '' ?>" required>
-                            <option value="">Choisir...</option>
-                            <option value="Tapis de course">Tapis de course</option>
-                            <option value="Haltères">Haltères</option>
-                            <option value="Ballons">Ballons</option>
-                        </select>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Quantité disponible *</label>
-                        <input type="number" id="equipementQuantite" name="quantite_d" class="form-control" min="0" value="<?= $editEquipement['quantite_d'] ?? '' ?>" required />
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">État *</label>
-                        <select id="equipementEtat" name="etat" class="form-select" value="<?= $editEquipement['etat'] ?? '' ?>" required>
-                            <option value="">Choisir...</option>
-                            <option value="Bon">Bon</option>
-                            <option value="Moyen">Moyen</option>
-                            <option value="À remplacer">À remplacer</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-primary" value="<?= $editEquipement ? "Modifier" : "Ajouter" ?>">Enregistrer</button>
-                </div>
-            </form>
-        </div>
+      </table>
     </div>
 
-    <!-- ASSOCIATIONS COURS / EQUIPEMENTS -->
-    <section id="associations" class="section">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2>Association Cours / Équipements</h2>
-        </div>
-
-        <div class="row g-3 mb-3">
-            <div class="col-md-4">
-                <label class="form-label">Cours</label>
-                <select id="assocCours" class="form-select"></select>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Équipement</label>
-                <select id="assocEquipement" class="form-select"></select>
-            </div>
-            <div class="col-md-4 d-flex align-items-end">
-                <button class="btn btn-primary me-2" onclick="addAssociation()">
-                    Associer
-                </button>
-            </div>
-        </div>
-
-        <div class="table-responsive">
-            <table class="table table-striped align-middle">
-                <thead>
-                <tr>
-                    <th>Cours</th>
-                    <th>Équipement</th>
-                    <th style="width: 120px;">Actions</th>
-                </tr>
-                </thead>
-                <tbody id="associationsTableBody"></tbody>
-            </table>
-        </div>
-    </section>
-
-    <!-- AUTH (Login / Register simple front) -->
-    <section id="auth" class="section">
+    <!-- Forms: Add / Edit (point to PHP endpoints) -->
+    <div id="forms" class="card">
+      <h4>Ajouter un cours</h4>
+      <form class="modal-content" id="formCours" action="" method="Post">
+        <input type="hidden" name="form" value="<?= $editCours ? 'updateCours' : 'cours' ?>">
+        <input type="hidden" name="id_c" value="<?= $editCours['id_c'] ?? '' ?>">
         <div class="row">
-            <div class="col-md-6 mb-4">
-                <div class="card">
-                    <div class="card-header">Login</div>
-                    <div class="card-body">
-                        <form onsubmit="event.preventDefault(); alert('Login côté front uniquement. À connecter au backend plus tard.');">
-                            <div class="mb-3">
-                                <label class="form-label">Email</label>
-                                <input type="email" class="form-control" required />
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Mot de passe</label>
-                                <input type="password" class="form-control" required />
-                            </div>
-                            <button type="submit" class="btn btn-primary w-100">Se connecter</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-6 mb-4">
-                <div class="card">
-                    <div class="card-header">Register</div>
-                    <div class="card-body">
-                        <form onsubmit="event.preventDefault(); alert('Inscription côté front uniquement. À connecter au backend plus tard.');">
-                            <div class="mb-3">
-                                <label class="form-label">Nom complet</label>
-                                <input type="text" class="form-control" required />
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Email</label>
-                                <input type="email" class="form-control" required />
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Mot de passe</label>
-                                <input type="password" class="form-control" required />
-                            </div>
-                            <button type="submit" class="btn btn-outline-primary w-100">Créer un compte</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
+          <div class="field"><label>Nom*</label><input type="text" id="coursNom" name="nom" class="form-control" value="<?= $editCours['nom'] ?? '' ?>"  required></div>
+          <div class="field"><label>Catégorie*</label><select name="categorie" value="<?= $editCours['categorie'] ?? '' ?>" required>
+            <option value="Yoga">Yoga</option>
+            <option value="Cardio">Cardio</option>
+            <option value="Musculation">Musculation</option>
+          </select></div>
         </div>
+        <div class="row">
+          <div class="field"><label>Date*</label><input type="date" name="date_c" value="<?= $editCours['date_c'] ?? '' ?>" required></div>
+          <div class="field"><label>Heure*</label><input type="time" name="heur" value="<?= $editCours['heur'] ?? '' ?>"  required></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Durée (minutes)*</label><input type="number" name="duree" value="<?= $editCours['duree'] ?? '' ?>"  required></div>
+          <div class="field"><label>Max participants*</label><input type="number" name="nombre_m" min="1" value="<?= $editCours['nombre_m'] ?? '' ?>" required></div>
+        </div>
+        <div style="margin-top:8px"><button class="btn" type="submit" value="<?= $editCours ? "Modifier" : "Ajouter" ?>" >Enregistrer</button></div>
+      </form>
 
-    </section>
+      <hr style="margin:12px 0">
+
+      <h4>Ajouter un équipement</h4>
+      <form action="" method="post">
+        <input type="hidden" name="form" value="<?= $editEquipement ? 'updateEquipement' : 'Équipement' ?>"/>
+        <input type="hidden" name="id_é" value="<?= $editEquipement['id_é'] ?? '' ?>">
+        <div class="row">
+          <div class="field"><label>Nom*</label><input name="nom" value="<?= $editEquipement['nom'] ?? '' ?>" required></div>
+          <div class="field"><label>Type*</label><input name="type" value="<?= $editEquipement['type'] ?? '' ?>" required></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Quantité*</label><input type="number" name="quantite_d" class="form-control" min="0" value="<?= $editEquipement['quantite_d'] ?? '' ?>" required></div>
+          <div class="field"><label>État*</label><select name="etat" value="<?= $editEquipement['etat'] ?? '' ?>"  required>
+            <option value="bon">Bon</option>
+            <option value="moyen">Moyen</option>
+            <option value="a_remplacer">À remplacer</option>
+          </select></div>
+        </div>
+        <div style="margin-top:8px"><button class="btn" type="submit" value="<?= $editEquipement ? "Modifier" : "Ajouter" ?>">Enregistrer</button></div>
+        </form>
+
+        <?php if(isset($_GET['associer'])): ?>
+        <h3>Associer un équipement au cours #<?= $_GET['associer'] ?></h3>
+
+        <form method="POST">
+            <input type="hidden" name="id_c" value="<?= $_GET['associer'] ?>">
+
+            <select name="id_é" required>
+                <?php
+                $eq = $conn->query("SELECT * FROM Équipement");
+                while($e = $eq->fetch_assoc()){
+                    echo "<option value='{$e['id_é']}'>{$e['nom']}</option>";
+                }
+                ?>
+            </select>
+
+            <button class="btn" type="submit" name="add_equip">Associer</button>
+        </form>
+        <?php endif; ?>
+
+
+
+
+    </div>
+
 
     <footer>
-        Projet Salle de Sport.
+      Template fournie — intégrez vos scripts PHP (connexion, CRUD) et exécutez `database.sql` pour créer les tables.
     </footer>
-</main>
-
-<!-- Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  </div>
+<!-- CHARTS JS UNIQUE -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-document.addEventListener("DOMContentLoaded", () => {
-    // ---------------------------
-    // Navigation entre sections
-    // ---------------------------
-    const sections = document.querySelectorAll(".section");
-    const navLinks = document.querySelectorAll(".nav-link");
+    // Totaux venant de PHP
+    const totalCours = <?= $totalCours ?>;
+    const totalEquip = <?= $totalEquip ?>;
 
-    navLinks.forEach((link) => {
-        link.addEventListener("click", () => {
-            const target = link.getAttribute("data-section");
+    console.log("Total Cours =", totalCours);
+    console.log("Total Equipements =", totalEquip);
 
-            // Activer le lien cliqué
-            navLinks.forEach((lnk) => lnk.classList.remove("active"));
-            link.classList.add("active");
-
-            // Afficher la section correspondante
-            sections.forEach((sec) => sec.classList.remove("active"));
-            document.getElementById(target).classList.add("active");
-        });
+    // Chart cours
+    new Chart(document.getElementById('chartCours').getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Cours'],
+            datasets: [{
+                data: [totalCours],
+                backgroundColor: ['#0EA5A4'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            plugins: {
+                legend: { display: false },
+                title: {
+                    display: true,
+                    text: 'Total des Cours'
+                }
+            },
+            cutout: '60%'
+        }
     });
-    var modal = new bootstrap.Modal(document.getElementById('modalCours'));
-    modal.show();
-    // ---------------------------
-    // Gestion des modals
-    // ---------------------------
-    // Fonction générique pour ouvrir un modal Bootstrap
-    function openModal(modalId) {
-        const modalEl = document.getElementById(modalId);
-        const modal = new bootstrap.Modal(modalEl);
-        modal.show();
-    }
 
-    // Exemple : ouvrir modals avec des boutons
-    const addCoursBtn = document.getElementById("btnAddCours");
-    if (addCoursBtn) {
-        addCoursBtn.addEventListener("click", () => openModal("modalCours"));
-    }
-
-    const addEquipBtn = document.getElementById("btnAddEquip");
-    if (addEquipBtn) {
-        addEquipBtn.addEventListener("click", () => openModal("modalEquipement"));
-    }
-});
+    // Chart équipements
+    new Chart(document.getElementById('chartEquip').getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Équipements'],
+            datasets: [{
+                data: [totalEquip],
+                backgroundColor: ['#7C3AED'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            plugins: {
+                legend: { display: false },
+                title: {
+                    display: true,
+                    text: 'Total des Équipements'
+                }
+            },
+            cutout: '60%'
+        }
+    });
 </script>
 
 </body>
 </html>
-
-
-
